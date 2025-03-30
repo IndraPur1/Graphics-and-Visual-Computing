@@ -5,20 +5,19 @@
 #include <stdlib.h>   
 #define PI 3.14 
  
-// Global variables
 float angle = 0.0, deltaAngle = 0.0, ratio;  
-float x = -5.0f, y = 12.0f, z = 40.0f; // initial camera position  
+float x = 5.0f, y = 10.0f, z = 40.0f; // posisi awal kamera  
 float lx = 0.0f, ly = 0.0f, lz = -1.0f;  
 int deltaMove = 0, h, w;  
 static int rotAngleX = 0, rotAngleY = 0, rotAngleZ = 0; 
-float posXKaki = 10, posXBola = -10, posYKaki = 6, posYBola = -5; 
-float rotKaki = 0.0; 
-int kick = 0, roll = 0, touch = 0; 
+float posXBadan = 10, posXKotak = 0, posYBadan = 7, posYKotak = 6; 
+float rotTangan1 = 0.0, rotTangan2 = 0.0, rotTangan3 = 0.0, rotTangan4 = 0.0; 
+int kick = 0, roll = 0, hit = 0, gerakTangan = 0, drop = 0, bring = 0, grab = 0, tabrak = 0; 
 float jarak = 1; 
  
 GLUquadricObj *IDquadric; 
 
-// Lighting variables   
+// Variable untuk pencahayaan   
 const GLfloat light_ambient[] = { 0.5f, 0.5f, 0.5f, 0.0f };  
 const GLfloat light_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };  
 const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };  
@@ -27,37 +26,24 @@ const GLfloat mat_ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
 const GLfloat mat_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };  
 const GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };  
 const GLfloat high_shininess[] = { 100.0f };  
- 
-// Function prototypes
-void init(void);
-void Reshape(int w1, int h1);
-void orientMe(float ang);
-void moveMeFlat(int i);
-void keyboard(unsigned char key, int x, int y);
-void pressKey(int k, int x, int y);
-void releaseKey(int key, int x, int y);
-void lighting(void);
-void Grid(void);
-void Grid2(void);
-void Balok(float panjang, float lebar, float tinggi);
-void pergerakanKaki(void);
-void pergerakanBola(void);
-void Object(void);
-void display(void);
 
-// Initialization function
+// Function prototypes
+void perubahKotak(void);
+void pengubahTangan(void);
+void Object(void);
+
 void init(void)  
 {  
     glEnable(GL_DEPTH_TEST);  
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  
-    IDquadric = gluNewQuadric();      // Create A Pointer To The Quadric Object
-    gluQuadricNormals(IDquadric, GLU_SMOOTH);  // Create Smooth Normals
-    gluQuadricTexture(IDquadric, GL_TRUE);    // Create Texture Coords
+    IDquadric = gluNewQuadric();      // Create A Pointer To The Quadric Object (NEW) 
+    gluQuadricNormals(IDquadric, GLU_SMOOTH);  // Create Smooth Normals (NEW) 
+    gluQuadricTexture(IDquadric, GL_TRUE);    // Create Texture Coords (NEW) 
 }  
  
-// Reshape function
 void Reshape(int w1, int h1)  
 {  
+    // Fungsi reshape  
     if(h1 == 0)  
         h1 = 1;  
     w = w1;  
@@ -72,25 +58,24 @@ void Reshape(int w1, int h1)
     gluLookAt(x, y, z, x + lx, y + ly, z + lz, 0.0f, 1.0f, 0.0f);  
 }  
  
-// Function to rotate camera direction (look left/right)
 void orientMe(float ang)  
 { 
+    // Fungsi ini untuk memutar arah kamera (tengok kiri/kanan)  
     lx = sin(ang/10);  
     lz = -cos(ang/10);   
     glLoadIdentity();  
     gluLookAt(x, y, z, x + lx, y + ly, z + lz, 0.0f, 1.0f, 0.0f);  
 }  
  
-// Function to move camera forward/backward
 void moveMeFlat(int i)  
 { 
-    x = x + i * (lx) * 0.1;  
-    z = z + i * (lz) * 0.1;  
+    // Fungsi ini untuk maju mundur kamera  
+    x = x + i*(lx)*0.1;  
+    z = z + i*(lz)*0.1;  
     glLoadIdentity();   
     gluLookAt(x, y, z, x + lx, y + ly, z + lz, 0.0f, 1.0f, 0.0f);  
 }  
  
-// Keyboard function
 void keyboard(unsigned char key, int x, int y)  
 { 
     switch (key) 
@@ -113,37 +98,57 @@ void keyboard(unsigned char key, int x, int y)
         case 'e':  
             rotAngleZ -= 2; 
             break;   
-        case 'o':  
-            posXKaki -= 1;  
-            // Check if touching
-            if (posXBola < -2.9) { 
-                posXBola += 1; 
+        case 'o': 
+            if(drop == 0) {   //kondisi jika kotak tidak jatuh ke tanah 
+                if (posXBadan > 4) { //kondisi jika tidak menabrak meja 
+                    posXBadan -= 1;  
+                    if (bring == 1) { 
+                        posXKotak -= 1; 
+                    }    
+                }  
+            } else { 
+                if (posXBadan > posXKotak + 3) { //kondisi jika tidak menabrak kotak 
+                    posXBadan -= 1;  
+                } 
             } 
             break;  
         case 'p':  
-            posXKaki += 1;  
-            posXBola -= 1; 
+            posXBadan += 1;  
+            if (bring == 1) { 
+                posXKotak += 1;  
+            } 
             break;  
-        case 'k':  
-            kick = 1; 
+        case 'g':  
+            gerakTangan = 1; 
             break;  
-        case 32: // Space bar
+        case 't':  
+            if (posXBadan >= 8) { //kondisi kotak telah diluar meja 
+                drop = 1;  
+                gerakTangan = 3; 
+            } 
+            break;             
+        case ' ': // Space bar (ASCII 32)
             rotAngleX = rotAngleY = rotAngleZ = 0; 
-            posXKaki = 10, posXBola = -10, posYKaki = 6, posYBola = -5; 
-            rotKaki = kick = roll = 0; 
+            posXBadan = 10;
+            posXKotak = 0;
+            posYBadan = 7;
+            posYKotak = 6; 
+            rotTangan1 = rotTangan2 = rotTangan3 = rotTangan4 = 0;
+            kick = roll = gerakTangan = drop = hit = bring = grab = 0; 
             break; 
-        case 27: // ESC key  
+        case 27:  // ESC key
             exit(0);  
+            break;
         default: 
             break; 
-    } 
+    }
     glutPostRedisplay(); 
 }  
  
-// Function for special keys (arrow keys)
 void pressKey(int k, int x, int y)  
 { 
-    // This function runs when keyboard keys are pressed but not released
+    // Fungsi ini akan dijalankan saat tombol keyboard ditekan dan belum dilepas  
+    // Selama tombol ditekan, variabel angle dan move diubah => kamera bergerak  
     switch (k)  
     {  
         case GLUT_KEY_UP: 
@@ -161,10 +166,10 @@ void pressKey(int k, int x, int y)
     }  
 }  
  
-// Function for special key release
 void releaseKey(int key, int x, int y)  
 { 
-    // This function runs when keyboard pressure is released
+    // Fungsi ini akan dijalankan saat tekanan tombol keyboard dilepas  
+    // Saat tombol dilepas, variabel angle dan move diset nol => kamera berhenti  
     switch (key)  
     {  
         case GLUT_KEY_UP: 
@@ -186,9 +191,8 @@ void releaseKey(int key, int x, int y)
     }  
 }  
  
-// Lighting function
-void lighting()
-{ 
+void lighting(void) { 
+    // Fungsi mengaktifkan pencahayaan  
     glEnable(GL_DEPTH_TEST);  
     glDepthFunc(GL_LESS);  
     glEnable(GL_LIGHT0);  
@@ -205,9 +209,9 @@ void lighting()
     glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);  
 }  
  
-// Function to create grid on floor
-void Grid()  
+void Grid(void)  
 { 
+    // Fungsi untuk membuat grid di "lantai"  
     double i;  
     const float Z_MIN = -50, Z_MAX = 50;  
     const float X_MIN = -50, X_MAX = 50;  
@@ -228,8 +232,7 @@ void Grid()
     glEnd();  
 }  
  
-// Function to create floor surface
-void Grid2() 
+void Grid2(void) 
 { 
     glColor3f(1.0f, 1.0f, 1.0f); 
     glBegin(GL_QUADS);  
@@ -238,9 +241,8 @@ void Grid2()
         glVertex3f(50, 0, -50); 
         glVertex3f(50, 0, 50);  
     glEnd();  
-}
+} 
  
-// Function to create box
 void Balok(float panjang, float lebar, float tinggi) 
 { 
     glPushMatrix();  
@@ -248,7 +250,7 @@ void Balok(float panjang, float lebar, float tinggi)
     float l = lebar/2; 
     float t = tinggi/2; 
     
-    // Front
+    //depan  
     glBegin(GL_QUADS);  
         glVertex3f(-p, 0, l);  
         glVertex3f(p, 0, l);  
@@ -256,7 +258,7 @@ void Balok(float panjang, float lebar, float tinggi)
         glVertex3f(-p, -t*2, l);  
     glEnd(); 
    
-    // Back
+    // belakang  
     glBegin(GL_QUADS); 
         glVertex3f(-p, 0, -l);  
         glVertex3f(p, 0, -l);  
@@ -264,7 +266,7 @@ void Balok(float panjang, float lebar, float tinggi)
         glVertex3f(-p, -t*2, -l); 
     glEnd();  
   
-    // Top
+    // atas  
     glBegin(GL_QUADS); 
         glTexCoord2f(0.0f, 0.0f);   
         glVertex3f(-p, 0, -l);  
@@ -276,7 +278,7 @@ void Balok(float panjang, float lebar, float tinggi)
         glVertex3f(-p, 0, l); 
     glEnd(); 
        
-    // Bottom
+    // bawah  
     glBegin(GL_QUADS); 
         glTexCoord2f(0.0f, 0.0f);   
         glVertex3f(-p, -t*2, -l);  
@@ -288,7 +290,7 @@ void Balok(float panjang, float lebar, float tinggi)
         glVertex3f(-p, -t*2, l); 
     glEnd(); 
   
-    // Right
+    // kanan  
     glBegin(GL_QUADS);  
         glTexCoord2f(0.0f, 0.0f);   
         glVertex3f(-p, -t*2, -l);  
@@ -300,7 +302,7 @@ void Balok(float panjang, float lebar, float tinggi)
         glVertex3f(-p, 0, -l); 
     glEnd(); 
      
-    // Left
+    // kiri  
     glBegin(GL_QUADS); 
         glTexCoord2f(0.0f, 0.0f);   
         glVertex3f(p, -t*2, -l);  
@@ -314,135 +316,161 @@ void Balok(float panjang, float lebar, float tinggi)
     glPopMatrix(); 
 } 
  
-// Function for leg movement
-void pergerakanKaki()
-{ 
-    // Condition for pulling back leg
-    if (kick == 1) {
-        if (rotKaki <= 45) {
-            rotKaki += 0.03;        
-        }
-        if (rotKaki > 44.9) {
-            kick = 2;   
-        }
-    }
-    
-    // Detect if ball is touching
-    if (posXBola > -2.9) {
-        touch = 1;
-    } else if (posXBola < -12) {
-        touch = 0;
-    }
-    
-    // Condition for kicking
-    if (kick == 2) {
-        if (rotKaki >= -90) {
-            rotKaki -= 0.2;
-            if (rotKaki < 1 && touch == 1) {  
-                roll = 1;  
-            }
-        }
-        if (rotKaki < -90) {
-            kick = 3;  
-        }
-    }
-    
-    // Condition for returning leg
-    if (kick == 3) {
-        if (rotKaki <= 0) {
-            rotKaki += 0.05;
-        }
-        if (rotKaki > -1) {
-            kick = 0;
-        }
-    }
+//prosedur kondisi merubah posisi kotak 
+void perubahKotak(void) { 
+    if(drop == 1 && grab == 1) { //kondisi saat ada perintah jatuh saat dipegang 
+        if(posYKotak >= 3) {  //batas jatuh 
+            posYKotak -= 0.01;  
+        } 
+        if (posYKotak < 3) { //saat sudah berhenti 
+            bring = 0; 
+            hit = 0; 
+            grab = 0; 
+        } 
+    } 
 } 
  
-// Function for ball movement
-void pergerakanBola()
-{ 
-    // Condition if leg has touched ball
-    if (roll == 1) {
-        if (jarak > 0) {    
-            posXBola -= 0.03; // Controls speed & distance covered in one iteration
-            jarak -= 0.01;    // Controls number of iterations
-        }
-        if (jarak < 0) {  
-            roll = 0;
-            jarak = 1;    
-        }
-    }
+//prosedur kondisi merubah tangan dan badan 
+void pengubahTangan(void) { 
+    if (posXBadan != 4) {  //kondisi jika tubuh menyentuh kotak bawah 
+        hit = 0; 
+    } else { 
+        hit = 1; 
+    } 
+  
+    if (hit == 1 && grab == 1) {  //kondisi jika menyentuh kotak dan ada perintah mengambil 
+        bring = 1; 
+    } 
+    
+    //memegang 
+    if(gerakTangan == 1) {  //kondisi pelebarkan tangan samping 
+        if (rotTangan1 >= -90) { 
+            rotTangan1 -= 0.1; 
+        } 
+        if (rotTangan1 < -90) { 
+            gerakTangan = 2;      
+        } 
+    } 
+    
+    if (gerakTangan == 2) {  //kondisi merapatkan tangan depan 
+        if (rotTangan2 >= -90) { 
+            rotTangan2 -= 0.1; 
+        } 
+        if (rotTangan2 < -90 && hit == 1) { 
+            grab = 1; 
+        } 
+    } 
+    
+    //melepas 
+    if (gerakTangan == 3) {  //konsisi melebarkan tangan depan 
+        if (rotTangan2 <= 0) { 
+            rotTangan2 += 0.1; 
+        } 
+        if (rotTangan2 > 0) { 
+            gerakTangan = 4;      
+        } 
+    } 
+    
+    if (gerakTangan == 4) {   //kondisi merapatkan tangan samping 
+        if (rotTangan1 <= 0) { 
+            rotTangan1 += 0.1; 
+        } 
+        if (rotTangan1 > 0) { 
+            gerakTangan = 0;      
+        } 
+    }    
 } 
- 
-// Function to create objects
-void Object() 
+
+void Object(void) 
 { 
+    //Meja 
     glPushMatrix(); 
-        glTranslatef(posXKaki, posYKaki, 0); 
+        glColor3f(0.1, 0.1, 0.2); 
+        glTranslatef(0, 3, 0); 
+        Balok(5, 5, 3); 
+    glPopMatrix(); 
+    
+    // Kotak pink 
+    glPushMatrix(); 
+        perubahKotak(); 
+        glColor3f(0.8, 0.3, 0.3); 
+        glTranslatef(posXKotak, posYKotak, 0); 
+        Balok(3, 3, 3); 
+    glPopMatrix(); 
+   
+    glPushMatrix(); 
+        pengubahTangan(); 
+        // objek yang dirubah 
+        glColor3f(0.3, 0.3, 0.8); 
+        glTranslatef(posXBadan, posYBadan, 0); 
+        Balok(3, 3, 7); //badan 
+        
+        // tangan kiri 
         glPushMatrix(); 
-            pergerakanKaki(); 
-            glRotatef(rotKaki, 0, 0, 1); // Execute leg rotation  
-            glColor3f(1, 1, 1); 
-            Balok(2, 3, 6); 
+            glColor3f(0.2, 0.5, 0.2);  
+            glTranslatef(0, -2, 2.5);   
+            glRotatef(rotTangan1, 1, 0, 0); 
+            glRotatef(rotTangan2, 0, 0, 1); 
+            Balok(2, 2, 4); 
         glPopMatrix(); 
-       
+        
+        //tangan kanan 
         glPushMatrix(); 
-            pergerakanBola(); 
-            glColor3f(0.8, 0.4, 0.0); 
-            glTranslatef(posXBola, posYBola, 0); 
-            glutSolidSphere(1, 20, 20); 
+            glColor3f(0.2, 0.5, 0.2);  
+            glTranslatef(0, -2, -2.5); 
+            glRotatef(-rotTangan1, 1, 0, 0); 
+            glRotatef(rotTangan2, 0, 0, 1);  
+            Balok(2, 2, 4); 
         glPopMatrix(); 
     glPopMatrix(); 
-  
-    glFlush(); 
 }     
- 
-// Display function
-void display()
-{  
+
+void display(void) {  
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
     
-    // If move and angle are not zero, move camera...  
+    // Kalau move dan angle tidak nol, gerakkan kamera...  
     if (deltaMove)  
         moveMeFlat(deltaMove);  
     if (deltaAngle) {  
         angle += deltaAngle;  
         orientMe(angle);   
-    }  
+    }
     
     glPushMatrix(); 
-        glRotated(rotAngleX, 1, 0, 0);   
+        glRotated(rotAngleX+10, 1, 0, 0);   
         glRotated(rotAngleY, 0, 1, 0); 
         glRotated(rotAngleZ, 0, 0, 1); 
         
-        // Draw grid  
+        // Gambar grid  
         Grid();  
-        //Grid2(); 
+        Grid2(); 
         
-        // Draw objects  
+        // Gambar objek di sini...  
         Object();  
     glPopMatrix();  
     
     glFlush();  
     glutSwapBuffers(); 
 }   
- 
-// Main function
+
 int main(int argc, char **argv)  
 {  
     glutInit(&argc, argv);  
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);  
     glutInitWindowPosition(100, 100);  
     glutInitWindowSize(640, 480);  
-    glutCreateWindow("Tendangan");  
+    glutCreateWindow("Grab");  
+    
     glutSpecialFunc(pressKey); 
     glutSpecialUpFunc(releaseKey);  
     glutDisplayFunc(display);  
     glutKeyboardFunc(keyboard); 
     glutIdleFunc(display);  
     glutReshapeFunc(Reshape); 
+    
     lighting(); 
     init(); 
+    
     glutMainLoop(); 
     return(0); 
 }
